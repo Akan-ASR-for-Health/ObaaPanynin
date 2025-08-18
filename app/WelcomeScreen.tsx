@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Image,
     SafeAreaView,
@@ -13,14 +13,14 @@ import {
 
 const WelcomeScreen = () => {
   const router = useRouter();
+  const [showEnglish, setShowEnglish] = useState(true);
 
   const handleContinue = () => {
     router.replace('/StartScreen');
   };
 
   const handleSeeTranslation = () => {
-    // Handle English translation functionality
-    console.log('Show English translation');
+    setShowEnglish(!showEnglish);
   };
 
   const handleTermsPress = () => {
@@ -42,64 +42,85 @@ const WelcomeScreen = () => {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header with icon and title horizontally aligned */}
-        <View style={styles.headerRow}>
+        {/* Header with icon and title vertically aligned */}
+        <View style={styles.headerContainer}>
           <View style={styles.iconContainer}>
             <Image
               source={require('../assets/images/oplogo.png')}
               resizeMode="cover"
             />
           </View>
-          <Text style={styles.title}>Welcome to Obaa Panyin</Text>
+          <Text style={styles.title}>
+            {showEnglish ? 'Welcome to Obaa Panyin' : 'Akwaaba wo Obaa Panyin'}
+          </Text>
         </View>
 
         {/* Main content */}
         <View style={styles.mainContent}>
           <Text style={styles.description}>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. In a purus et diam semper 
-            imperdiet. Vivamus ultricies feugiat odio sed sollicitudin.
+            {showEnglish 
+              ? 'Your Akan voice companion for pregnancy and newborn care. Ask by speaking and hear spoken answers.'
+              : 'Wo Akan-kasa boafo ma awo-ntoasoo ne awoakyre. Ka wo asemmisa na tie mmuaee.'
+            }
           </Text>
 
           <TouchableOpacity onPress={handleSeeTranslation} style={styles.translationButton}>
-            <Text style={styles.translationText}>See English translation</Text>
+            <Text style={styles.translationText}>
+              {showEnglish ? 'Hwe Wa Twi Mu' : 'See English translation'}
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* Privacy Notice */}
         <View style={styles.noticeContainer}>
           <View style={styles.noticeItem}>
-            <View>
-                    <Image
-                      source={require('../assets/images/lock.png')} 
-                      resizeMode="cover"
-                    />
+            <View style={styles.iconWrapper}>
+              <Image
+                source={require('../assets/images/lock.png')} 
+                resizeMode="cover"
+              />
             </View>
             <View style={styles.noticeContent}>
               <Text style={styles.noticeTitle}>
-                Please don't share any sensitive personal information.
+                {showEnglish 
+                  ? "Don't share sensitive personal information."
+                  : 'Mfa wo ho ahintasem nnhyɛ ha'
+                }
               </Text>
               <Text style={styles.noticeDescription}>
-                Your privacy and security are important, and it's best to keep private details out of our conversations.
+                {showEnglish
+                  ? 'IDs, accounts, passwords, financial details, etc.'
+                  : 'ID, account, password, sikasem, etc.'
+                }
               </Text>
             </View>
           </View>
 
           <View style={styles.noticeItem}>
-            <View >
-                <View>
-                    <Image
-                      source={require('../assets/images/flag.png')} 
-                      resizeMode="cover"
-                    />
-            </View>
+            <View style={styles.iconWrapper}>
+              <Image
+                source={require('../assets/images/flag.png')} 
+                resizeMode="cover"
+              />
             </View>
             <View style={styles.noticeContent}>
               <Text style={styles.noticeTitle}>
-                Never use this as a substitute for professional medical attention/advice.
+                {showEnglish
+                  ? "This doesn't replace medical care."
+                  : 'Ɛnyɛ ayaresabea.'
+                }
               </Text>
               <Text style={styles.noticeDescription}>
-                Always consult with a qualified healthcare provider for any health concerns.
+                {showEnglish
+                  ? 'If you have symptoms or concerns, contact a midwife/doctor or visit a health facility.'
+                  : 'Sɛ wohia dɔkota, anaa wohu simptom a, frɛ wo midwife/dɔkotani anaa ko ayaresabea ntem.'
+                }
               </Text>
+              {showEnglish && (
+                <Text style={styles.noticeDescription}>
+                  If it's urgent, <Text style={styles.urgentText}>seek emergency care immediately</Text>.
+                </Text>
+              )}
             </View>
           </View>
         </View>
@@ -108,15 +129,27 @@ const WelcomeScreen = () => {
       {/* Bottom Section */}
       <View style={styles.bottomSection}>
         <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-          <Text style={styles.continueButtonText}>Continue</Text>
+          <Text style={styles.continueButtonText}>
+            {showEnglish ? 'Continue' : 'Toa so'}
+          </Text>
         </TouchableOpacity>
 
         <View style={styles.termsContainer}>
           <Text style={styles.termsText}>
-            By continuing, you agree to our{' '}
-            <Text style={styles.linkText} onPress={handleTermsPress}>Terms</Text>
-            {' '}and have read our{' '}
-            <Text style={styles.linkText} onPress={handlePrivacyPress}>Privacy Policy</Text>
+            {showEnglish 
+              ? <>
+                  By continuing, you agree to our{' '}
+                  <Text style={styles.linkText} onPress={handleTermsPress}>Terms</Text>
+                  {' '}and have read our{' '}
+                  <Text style={styles.linkText} onPress={handlePrivacyPress}>Privacy Policy</Text>
+                </>
+              : <>
+                  Wɔtoa so a, wopene yɛn{' '}
+                  <Text style={styles.linkText} onPress={handleTermsPress}>Terms</Text>
+                  {' '}so na wokenkan yɛn{' '}
+                  <Text style={styles.linkText} onPress={handlePrivacyPress}>Privacy Policy</Text>
+                </>
+            }
           </Text>
         </View>
       </View>
@@ -136,25 +169,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 20,
   },
-  headerRow: {
-    flexDirection: 'row',
+  headerContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   iconContainer: {
     marginBottom: 16,
-  },
-  icon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#E3F2FD',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconText: {
-    fontSize: 30,
   },
   title: {
     fontSize: 28,
@@ -164,13 +184,14 @@ const styles = StyleSheet.create({
     lineHeight: 36,
   },
   mainContent: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
   description: {
     fontSize: 16,
     color: '#424242',
     lineHeight: 24,
     marginBottom: 16,
+    textAlign: 'left',
   },
   translationButton: {
     alignSelf: 'flex-start',
@@ -188,29 +209,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     alignItems: 'flex-start',
   },
-  lockIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#FFF3E0',
-    justifyContent: 'center',
-    alignItems: 'center',
+  iconWrapper: {
     marginRight: 16,
-  },
-  lockIconText: {
-    fontSize: 20,
-  },
-  medicalIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#FFF3E0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  medicalIconText: {
-    fontSize: 20,
+    marginTop: 2,
   },
   noticeContent: {
     flex: 1,
@@ -219,13 +220,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#133D75',
-    marginBottom: 8,
+    marginBottom: 4,
     lineHeight: 22,
   },
   noticeDescription: {
     fontSize: 14,
     color: '#666666',
     lineHeight: 20,
+    marginBottom: 4,
+  },
+  urgentText: {
+    fontWeight: '600',
+    color: '#133D75',
   },
   bottomSection: {
     paddingHorizontal: 24,
@@ -234,7 +240,7 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     backgroundColor: '#133D75',
-    paddingVertical: 10,
+    paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
     marginBottom: 16,
@@ -266,8 +272,6 @@ const styles = StyleSheet.create({
     margin: 0,
     padding: 0,
   },
-
-
 });
 
 export default WelcomeScreen;

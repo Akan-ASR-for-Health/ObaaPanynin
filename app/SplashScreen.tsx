@@ -2,12 +2,12 @@
 import { useRouter } from "expo-router";
 import React, { useEffect } from "react";
 import {
-    Dimensions,
-    Image,
-    StatusBar,
-    StyleSheet,
-    Text,
-    View
+  Dimensions,
+  Image,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View
 } from "react-native";
 
 
@@ -44,6 +44,9 @@ export default function SplashScreen() {
         {/* App title - positioned in center */}
         <View style={styles.titleContainer}>
           <Text style={styles.title}>Obaa Panyin</Text>
+        </View>
+          <View style={styles.titleContainer}>
+          <Text style={styles.creditText}>A gift from google</Text>
         </View>
         
         {/* Bottom section with credits */}
