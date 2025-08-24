@@ -25,7 +25,7 @@ export const useTranslation = (): UseTranslationReturn => {
     
     // Check if translation already exists
     if (translations[messageId]) {
-      console.log('✅ Translation already exists for:', messageId);
+      console.log('✅ Translation already exists for:', messageId, '→', translations[messageId]);
       return;
     }
 
@@ -38,7 +38,12 @@ export const useTranslation = (): UseTranslationReturn => {
     console.log('🚀 Starting new translation...');
     
     // Add to loading set
-    setLoadingTranslations(prev => new Set(prev).add(messageId));
+    setLoadingTranslations(prev => {
+      const newSet = new Set(prev);
+      newSet.add(messageId);
+      console.log('📝 Added to loading set:', messageId, 'Current loading:', Array.from(newSet));
+      return newSet;
+    });
 
     try {
       let translatedText: string;
@@ -56,37 +61,52 @@ export const useTranslation = (): UseTranslationReturn => {
       console.log('✅ Translation successful:', translatedText);
 
       // Store the translation
-      setTranslations(prev => ({
-        ...prev,
-        [messageId]: translatedText,
-      }));
+      setTranslations(prev => {
+        const newTranslations = {
+          ...prev,
+          [messageId]: translatedText,
+        };
+        console.log('💾 Storing translation for:', messageId, '→', translatedText);
+        console.log('💾 All translations now:', newTranslations);
+        return newTranslations;
+      });
 
     } catch (error) {
       console.error('❌ Translation failed for message:', messageId, error);
-      // Store original text as fallback
-      setTranslations(prev => ({
-        ...prev,
-        [messageId]: text,
-      }));
+      // Store error message instead of original text
+      setTranslations(prev => {
+        const newTranslations = {
+          ...prev,
+          [messageId]: 'Translation failed - please try again',
+        };
+        console.log('🚨 Storing error translation for:', messageId);
+        return newTranslations;
+      });
     } finally {
       // Remove from loading set
       setLoadingTranslations(prev => {
         const newSet = new Set(prev);
         newSet.delete(messageId);
+        console.log('🗑️ Removed from loading set:', messageId, 'Current loading:', Array.from(newSet));
         return newSet;
       });
     }
   }, [translations, loadingTranslations]);
 
   const getTranslation = useCallback((messageId: string): string | null => {
-    return translations[messageId] || null;
+    const translation = translations[messageId] || null;
+    console.log('🔍 getTranslation for:', messageId, '→', translation);
+    return translation;
   }, [translations]);
 
   const isTranslating = useCallback((messageId: string): boolean => {
-    return loadingTranslations.has(messageId);
+    const isLoading = loadingTranslations.has(messageId);
+    console.log('⏳ isTranslating for:', messageId, '→', isLoading);
+    return isLoading;
   }, [loadingTranslations]);
 
   const clearTranslations = useCallback(() => {
+    console.log('🧹 Clearing all translations');
     setTranslations({});
     setLoadingTranslations(new Set());
   }, []);

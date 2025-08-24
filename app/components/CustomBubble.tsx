@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { IMessage } from 'react-native-gifted-chat';
 import { Bubble } from 'react-native-gifted-chat';
 
@@ -11,9 +11,7 @@ type CustomMessage = IMessage & {
 interface CustomBubbleProps {
   translationVisibility: Record<string, boolean>;
   onToggleTranslation: (messageId: string) => void;
-  translateMessage: (messageId: string, text: string, isUserMessage?: boolean) => Promise<void>;
   getTranslation: (messageId: string) => string | null;
-  isTranslating: (messageId: string) => boolean;
   [key: string]: any;
 }
 
@@ -28,42 +26,25 @@ const CustomBubble: React.FC<CustomBubbleProps> = (props) => {
   const showTranslation = props.translationVisibility[messageId] || false;
   const isUserMessage = currentMessage.user._id === 1;
   const translation = props.getTranslation(messageId);
-  const isLoadingTranslation = props.isTranslating(messageId);
 
-  // Debug logging to see what's happening
+  // Only show translation button if there's a translation available
+  const hasTranslation = !!translation;
+
   console.log(`🔍 Bubble render for ${messageId}:`, {
     showTranslation,
-    hasTranslation: !!translation,
-    isLoadingTranslation,
+    hasTranslation,
+    translation: translation ? translation.substring(0, 50) + '...' : null,
+    messageText: currentMessage.text.substring(0, 50) + '...',
+    isUserMessage,
+    allTranslationVisibility: props.translationVisibility,
     translationVisibilityForThisMessage: props.translationVisibility[messageId],
-    allTranslationVisibility: props.translationVisibility
   });
 
-  // Auto-translate when translation is requested and not already available
-  useEffect(() => {
-    console.log('🔄 useEffect triggered with:', {
-      showTranslation,
-      hasTranslation: !!translation,
-      isLoadingTranslation,
-      messageId
-    });
-    
-    if (showTranslation && !translation && !isLoadingTranslation) {
-      console.log('🚀 Starting translation for:', currentMessage.text);
-      props.translateMessage(messageId, currentMessage.text, isUserMessage);
-    }
-  }, [showTranslation, translation, isLoadingTranslation, messageId, currentMessage.text, isUserMessage, props.translateMessage]);
-
-  const handleToggleTranslation = () => {
-    console.log('Translation button clicked for message:', messageId);
-    console.log('Current showTranslation state:', showTranslation);
-    console.log('Available translation functions:', {
-      hasTranslateMessage: typeof props.translateMessage === 'function',
-      hasGetTranslation: typeof props.getTranslation === 'function',
-      hasIsTranslating: typeof props.isTranslating === 'function'
-    });
+  const handleToggleTranslation = useCallback(() => {
+    console.log('🔄 Translation button clicked for message:', messageId);
+    console.log('📋 Current state - showTranslation:', showTranslation, 'hasTranslation:', hasTranslation);
     props.onToggleTranslation(messageId);
-  };
+  }, [messageId, showTranslation, hasTranslation, props.onToggleTranslation]);
 
   return (
     <View>
@@ -85,36 +66,31 @@ const CustomBubble: React.FC<CustomBubbleProps> = (props) => {
         }}
       />
       
-      {/* Translation toggle button - ALWAYS SHOW (removed hasTranslation condition) */}
-      <TouchableOpacity 
-        style={[
-          styles.translationButton,
-          isUserMessage ? styles.translationRight : styles.translationLeft
-        ]}
-        onPress={handleToggleTranslation}
-      >
-        <Text style={styles.translationText}>
-          {showTranslation ? "Hide translation" : "See English translation"}
-        </Text>
-      </TouchableOpacity>
+      {/* Only show translation button if translation is available */}
+      {hasTranslation && (
+        <TouchableOpacity 
+          style={[
+            styles.translationButton,
+            isUserMessage ? styles.translationRight : styles.translationLeft
+          ]}
+          onPress={handleToggleTranslation}
+        >
+          <Text style={styles.translationText}>
+            {showTranslation ? "Hide translation" : "See English translation"}
+          </Text>
+        </TouchableOpacity>
+      )}
       
-      {/* Show translation bubble if translation is visible */}
-      {showTranslation && (
+      {/* Show translation bubble if translation is visible and available */}
+      {showTranslation && hasTranslation && (
         <View style={[
           styles.translationBubble,
           styles.translationBubbleGrey,
           isUserMessage ? styles.translationBubbleRight : styles.translationBubbleLeft
         ]}>
-          {isLoadingTranslation ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#133D75" />
-              <Text style={styles.loadingText}>Translating...</Text>
-            </View>
-          ) : (
-            <Text style={styles.translationBubbleText}>
-              {translation || "Translation not available"}
-            </Text>
-          )}
+          <Text style={styles.translationBubbleText}>
+            {translation}
+          </Text>
         </View>
       )}
     </View>
@@ -169,18 +145,6 @@ const styles = StyleSheet.create({
     color: '#C19D5D',
     fontWeight: '600',
     textDecorationLine: 'underline',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 4,
-  },
-  loadingText: {
-    color: '#133D75',
-    fontSize: 14,
-    fontStyle: 'italic',
-    marginLeft: 8,
   },
 });
 

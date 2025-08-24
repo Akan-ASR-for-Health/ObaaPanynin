@@ -21,6 +21,7 @@ interface WebSocketHookReturn {
   sendMessage: (message: string) => void;
   onAudioResponse?: (audioUrl: string) => void;
   setOnAudioResponse: (callback: (audioUrl: string) => void) => void;
+  getMessageTranslation: (messageId: string) => string | null;
 }
 
 const WEBSOCKET_URL = 'wss://h3vwf0fhff24pc-9090.proxy.runpod.net/chat';
@@ -32,11 +33,18 @@ export const useWebSocket = (): WebSocketHookReturn => {
   const [isTyping, setIsTyping] = useState(false);
   const systemMessageShownRef = useRef(false);
 
-  // ✅ Ref instead of state for audio response callback
-  const onAudioResponseRef = useRef<((audioUrl: string) => void) | undefined>();
+  // Store translations separately
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+
+  // Audio response callback
+  const onAudioResponseRef = useRef<((audioUrl: string) => void) | undefined>(undefined);
 
   const setOnAudioResponse = (callback: (audioUrl: string) => void) => {
     onAudioResponseRef.current = callback;
+  };
+
+  const getMessageTranslation = (messageId: string): string | null => {
+    return translations[messageId] || null;
   };
 
   const createWebSocketConnection = (userId: string): WebSocket => {
@@ -66,25 +74,100 @@ export const useWebSocket = (): WebSocketHookReturn => {
               _id: 2,
               name: 'System',
             },
+            hasTranslation: true,
+            translation: "If you need information about yourself or your baby, please see a healthcare provider or doctor. If you have urgent concerns, please seek immediate medical care. I recommend consulting with a doctor. For accurate medical information, please consult a healthcare professional.",
           };
+
+          // Store the translation
+          setTranslations(prev => ({
+            ...prev,
+            [String(systemMessage._id)]: systemMessage.translation!,
+          }));
+
           setMessages((prevMessages) => GiftedChat.append(prevMessages, [systemMessage]));
         }
       } else if (data.type === 'dual_memory_response') {
         setIsTyping(false);
         console.log('Dual memory response received:', data.response.text);
 
+        const messageId = data.message_id || Math.round(Math.random() * 1000000);
+        
         const botMessage: CustomMessage = {
-          _id: data.message_id || Math.round(Math.random() * 1000000),
-          text: data.response.text,
+          _id: messageId,
+          text: data.response.text, // This is the Twi text
           createdAt: new Date(data.timestamp * 1000),
           user: {
             _id: 2,
             name: 'Obaa Panyin',
           },
+          hasTranslation: true,
         };
+
+        // Extract English translation from the response
+        const englishTranslation = data.safety_bounded_llm?.english_response;
+        
+        if (englishTranslation) {
+          console.log('📝 Storing built-in translation for bot message:', messageId);
+          console.log('🇬🇭 Twi:', data.response.text);
+          console.log('🇺🇸 English:', englishTranslation);
+          
+          botMessage.translation = englishTranslation;
+          
+          // Store the translation
+          setTranslations(prev => ({
+            ...prev,
+            [String(messageId)]: englishTranslation,
+          }));
+        }
+
+        // 🆕 Handle user message translation from the same response
+        if (data.user_input && data.variant_memory?.canonical_query) {
+          const userTwiText = data.user_input.text;
+          const userEnglishTranslation = data.variant_memory.canonical_query;
+          
+          console.log('📝 Processing user message translation:');
+          console.log('🇬🇭 User Twi:', userTwiText);
+          console.log('🇺🇸 User English:', userEnglishTranslation);
+          
+          // Find and update the matching user message
+          setMessages(prevMessages => {
+            const updatedMessages = prevMessages.map(msg => {
+              // Match user messages that have the same text and don't have translation yet
+              if (msg.user._id === 1 && 
+                  msg.text.trim() === userTwiText.trim() && 
+                  !msg.hasTranslation) {
+                
+                console.log('✅ Found matching user message:', msg._id, 'Text:', msg.text);
+                
+                // Store user message translation in the main translations object
+                const messageIdStr = String(msg._id);
+                setTranslations(prev => {
+                  const newTranslations = {
+                    ...prev,
+                    [messageIdStr]: userEnglishTranslation,
+                  };
+                  console.log('💾 Stored user translation for:', messageIdStr, '→', userEnglishTranslation);
+                  console.log('💾 All translations after user update:', newTranslations);
+                  return newTranslations;
+                });
+                
+                return {
+                  ...msg,
+                  hasTranslation: true,
+                  translation: userEnglishTranslation,
+                };
+              }
+              return msg;
+            });
+            
+            console.log('📋 Updated messages with user translation');
+            return updatedMessages;
+          });
+        }
+
         setMessages((prevMessages) => GiftedChat.append(prevMessages, [botMessage]));
 
-        // ✅ Handle audio response with ref
+        // Handle audio response
         if (data.response?.audio_url) {
           console.log('🔊 Audio response available:', data.response.audio_url);
           if (onAudioResponseRef.current) {
@@ -139,13 +222,15 @@ export const useWebSocket = (): WebSocketHookReturn => {
 
       socket.send(JSON.stringify(outgoingMessage));
 
+      const messageId = Math.round(Math.random() * 1000000);
       const userMessage: CustomMessage = {
-        _id: Math.round(Math.random() * 1000000),
+        _id: messageId,
         text: message.trim(),
         createdAt: new Date(),
         user: {
           _id: 1,
         },
+        hasTranslation: false, // Will be updated when bot response comes back with user translation
       };
 
       setMessages((prevMessages) => GiftedChat.append(prevMessages, [userMessage]));
@@ -177,5 +262,6 @@ export const useWebSocket = (): WebSocketHookReturn => {
     sendMessage,
     onAudioResponse: onAudioResponseRef.current,
     setOnAudioResponse,
+    getMessageTranslation,
   };
 };

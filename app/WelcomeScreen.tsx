@@ -13,7 +13,7 @@ import {
 
 const WelcomeScreen = () => {
   const router = useRouter();
-  const [showEnglish, setShowEnglish] = useState(true);
+  const [showEnglish, setShowEnglish] = useState(false);
 
   const handleContinue = () => {
     router.replace('/StartScreen');

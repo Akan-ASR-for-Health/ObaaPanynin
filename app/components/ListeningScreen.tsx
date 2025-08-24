@@ -9,7 +9,8 @@ interface ListeningScreenProps {
   waveAnim2: Animated.Value;
   waveAnim3: Animated.Value;
   recordingDuration?: number;
-  voiceState?: 'listening' | 'thinking' | 'responding';
+  voiceState?: 'listening' | 'thinking' | 'responding' | 'idle';
+  onBackToChat?: () => void;
 }
 
 const ListeningScreen: React.FC<ListeningScreenProps> = ({
@@ -21,6 +22,7 @@ const ListeningScreen: React.FC<ListeningScreenProps> = ({
   waveAnim3,
   recordingDuration = 0,
   voiceState = 'listening',
+  onBackToChat,
 }) => {
   const formatDuration = (duration: number): string => {
     const seconds = Math.floor(duration);
@@ -39,38 +41,69 @@ const ListeningScreen: React.FC<ListeningScreenProps> = ({
           showDuration: true,
           circleColor: '#F0F8FF',
           borderColor: '#4A90E2',
+          showTapToSpeak: false,
         };
       case 'thinking':
         return {
           title: 'Merɛdwen...',
           subtitle: 'Merɛyɛ wo nsɛm no',
-          buttonText: '',
+          buttonText: 'Back to Chat',
           showDuration: false,
           circleColor: '#FFF8DC',
           borderColor: '#FFD700',
+          showTapToSpeak: false,
         };
       case 'responding':
         return {
           title: 'Merɛkasa...',
-          subtitle: 'Tie mʼanoɔ',
+          subtitle: 'Tie mɛanooɛ',
           buttonText: 'Gyae',
           showDuration: false,
           circleColor: '#F0FFF0',
           borderColor: '#32CD32',
+          showTapToSpeak: false,
         };
-      default:
+      default: // 'idle' state - ready to listen again
         return {
-          title: 'Merɛtie...',
-          subtitle: 'Kasa na me ntie wo',
-          buttonText: 'Gyae',
-          showDuration: true,
+          title: 'Ready to listen',
+          subtitle: 'Tap to speak again',
+          buttonText: 'Back to Chat',
+          showDuration: false,
           circleColor: '#F0F8FF',
           borderColor: '#4A90E2',
+          showTapToSpeak: true,
         };
     }
   };
 
   const stateInfo = getStateInfo();
+
+  const handleButtonPress = () => {
+    if (voiceState === 'thinking' && onBackToChat) {
+      console.log('🔙 Back to chat pressed from thinking state');
+      onBackToChat();
+    } else {
+      onStopListening();
+    }
+  };
+
+  // Handle circle press - this is the key fix
+  const handleCirclePress = () => {
+    console.log('🎯 Circle pressed, voice state:', voiceState);
+    
+    if (voiceState === 'listening') {
+      // Stop current recording
+      onMicPress();
+    } else if (voiceState === 'idle') {
+      // Start new recording when in idle state
+      console.log('🎤 Starting new recording from idle state');
+      onMicPress();
+    } else if (voiceState === 'responding') {
+      // Stop playback
+      onMicPress();
+    }
+    // Don't handle thinking state - let it process
+  };
 
   return (
     <View style={styles.overlayContainer}>
@@ -86,8 +119,8 @@ const ListeningScreen: React.FC<ListeningScreenProps> = ({
 
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={voiceState === 'listening' ? onMicPress : undefined}
-          disabled={voiceState !== 'listening'}
+          onPress={handleCirclePress}
+          disabled={voiceState === 'thinking'} // Only disable during thinking
         >
           <Animated.View 
             style={[
@@ -123,6 +156,13 @@ const ListeningScreen: React.FC<ListeningScreenProps> = ({
                   <Animated.View style={[styles.soundWave, { opacity: waveAnim3 }]} />
                 </View>
               )}
+
+              {/* Show microphone icon for idle state */}
+              {voiceState === 'idle' && (
+                <View style={styles.readyIndicator}>
+                  <Text style={styles.micIcon}>🎤</Text>
+                </View>
+              )}
             </View>
           </Animated.View>
         </TouchableOpacity>
@@ -132,10 +172,17 @@ const ListeningScreen: React.FC<ListeningScreenProps> = ({
         <View style={styles.controlsContainer}>
           {stateInfo.buttonText && (
             <TouchableOpacity 
-              style={[styles.controlButton, styles.stopButton]} 
-              onPress={onStopListening}
+              style={[
+                styles.controlButton, 
+                voiceState === 'thinking' ? styles.backToChatButton : styles.stopButton
+              ]} 
+              onPress={handleButtonPress}
             >
-              <Text style={styles.stopButtonText}>{stateInfo.buttonText}</Text>
+              <Text style={[
+                voiceState === 'thinking' ? styles.backToChatButtonText : styles.stopButtonText
+              ]}>
+                {stateInfo.buttonText}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -147,14 +194,25 @@ const ListeningScreen: React.FC<ListeningScreenProps> = ({
         )}
         
         {voiceState === 'thinking' && (
-          <Text style={styles.instructionText}>
-            Merɛyɛ wo nsɛm no yiye...
-          </Text>
+          <>
+            <Text style={styles.instructionText}>
+              Merɛyɛ wo nsɛm no yiye...
+            </Text>
+            <Text style={[styles.instructionText, styles.helpText]}>
+              Tap "Back to Chat" if you want to return to text mode
+            </Text>
+          </>
         )}
         
         {voiceState === 'responding' && (
           <Text style={styles.instructionText}>
             Obaa Panyin reka...
+          </Text>
+        )}
+
+        {voiceState === 'idle' && (
+          <Text style={styles.instructionText}>
+            Tap the circle to speak again or use "Back to Chat" for text mode
           </Text>
         )}
       </View>
@@ -282,19 +340,28 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   controlButton: {
-    width: 80,
     height: 50,
     borderRadius: 25,
     backgroundColor: '#F5F5F5',
     justifyContent: 'center',
     alignItems: 'center',
     marginHorizontal: 15,
+    paddingHorizontal: 20,
   },
   stopButton: {
     backgroundColor: '#FF6B6B',
-    paddingHorizontal: 20,
+    minWidth: 80,
+  },
+  backToChatButton: {
+    backgroundColor: '#4A90E2',
+    minWidth: 120,
   },
   stopButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  backToChatButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
@@ -305,6 +372,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 20,
+  },
+  readyIndicator: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  micIcon: {
+    fontSize: 40,
+    textAlign: 'center',
+  },
+  helpText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#4A90E2',
+    fontStyle: 'italic',
   },
 });
 

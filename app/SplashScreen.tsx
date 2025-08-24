@@ -42,12 +42,19 @@ export default function SplashScreen() {
         <View style={styles.topSpacer} />
         
         {/* App title - positioned in center */}
+
         <View style={styles.titleContainer}>
+                    <View style={styles.iconContainer}>
+                      <Image
+                        source={require('../assets/images/oplogo.png')}
+                        resizeMode="cover"
+                        style={{ width: 100, height: 100 }}
+                      />
+                    </View>
+
           <Text style={styles.title}>Obaa Panyin</Text>
         </View>
-          <View style={styles.titleContainer}>
-          <Text style={styles.creditText}>A gift from google</Text>
-        </View>
+
         
         {/* Bottom section with credits */}
         <View style={styles.bottomSection}>
@@ -56,7 +63,8 @@ export default function SplashScreen() {
               Powered by <Text style={styles.highlightText}>DCS-HCI Lab</Text>
             </Text>
             <Text style={styles.creditText}>
-              Sponsored by <Text style={styles.highlightText}>BANGA</Text>
+              Sponsored by <Text style={styles.highlightText}>BANGA</Text> &
+              Google gift
             </Text>
           </View>
         </View>
@@ -102,7 +110,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontSize: 48,
+    fontSize: 36,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
@@ -110,6 +118,10 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 4,
+  },
+    iconContainer: {
+    marginBottom: 16,
+    
   },
   bottomSection: {
     flex: 1,

@@ -23,7 +23,8 @@ interface VoiceConversationHook {
 
 export const useVoiceConversation = (
   sendMessage: (message: string) => void,
-  onAudioResponseReceived?: (audioUrl: string) => void
+  onAudioResponseReceived?: (audioUrl: string) => void,
+  onVoiceConversationEnd?: () => void // New callback to notify when voice conversation ends
 ): VoiceConversationHook & { playAudioResponse: (audioUrl: string) => Promise<void> } => {
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -154,11 +155,16 @@ export const useVoiceConversation = (
       setVoiceState('idle');
       clearError();
       
+      // Notify that voice conversation has ended
+      if (onVoiceConversationEnd) {
+        onVoiceConversationEnd();
+      }
+      
     } catch (error) {
       console.error('❌ Error cancelling listening:', error);
       setVoiceState('idle');
     }
-  }, [stopRecordingTimer, clearError]);
+  }, [stopRecordingTimer, clearError, onVoiceConversationEnd]);
 
   // Play audio response from WebSocket
   const playAudioResponse = useCallback(async (audioUrl: string): Promise<void> => {
@@ -169,7 +175,15 @@ export const useVoiceConversation = (
       setVoiceState('responding');
       isPlayingResponseRef.current = true;
       
-      const success = await audioPlaybackService.playBotResponse(audioUrl);
+      const success = await audioPlaybackService.playBotResponse(audioUrl, () => {
+        // 🎯 KEY FIX: This callback runs when audio playback finishes
+        console.log('🎯 Audio playback completed - transitioning to idle state for next interaction');
+        setVoiceState('idle'); // ✅ Automatically transition to idle
+        isPlayingResponseRef.current = false;
+        
+        // Notify that voice conversation cycle is complete (but ready for next interaction)
+        // Don't end voice conversation here - just completed one cycle
+      });
       
       if (!success) {
         console.error('❌ Failed to play audio response');
@@ -191,7 +205,7 @@ export const useVoiceConversation = (
       setVoiceState('idle');
       isPlayingResponseRef.current = false;
     }
-  }, [voiceState, onAudioResponseReceived]);
+  }, [onAudioResponseReceived]); // Removed voiceState from dependencies to avoid stale closure
 
   // Stop audio response playback
   const stopResponse = useCallback(async (): Promise<void> => {
@@ -200,7 +214,7 @@ export const useVoiceConversation = (
       
       await audioPlaybackService.stopPlayback();
       isPlayingResponseRef.current = false;
-      setVoiceState('idle');
+      setVoiceState('idle'); // ✅ Go to idle when manually stopped
       
     } catch (error) {
       console.error('❌ Error stopping response:', error);

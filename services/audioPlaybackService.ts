@@ -68,23 +68,48 @@ class AudioPlaybackService {
   }
 
   private onPlaybackStatusUpdate(status: any): void {
+    console.log('🎵 Playback status update:', {
+      isLoaded: status.isLoaded,
+      isPlaying: status.isPlaying,
+      didJustFinish: status.didJustFinish,
+      positionMillis: status.positionMillis,
+      durationMillis: status.durationMillis,
+      error: status.error
+    });
+
     if (status.isLoaded) {
       if (status.didJustFinish && !status.isLooping) {
-        console.log('🔊 Audio playback finished');
+        console.log('🔊 Audio playback finished - calling completion callback');
         this.isPlaying = false;
         
         // Call the finished callback
         if (this.onPlaybackFinished) {
-          this.onPlaybackFinished();
-          this.onPlaybackFinished = undefined;
+          console.log('📞 Triggering onPlaybackFinished callback');
+          const callback = this.onPlaybackFinished;
+          this.onPlaybackFinished = undefined; // Clear callback first to prevent double-calls
+          callback();
+        } else {
+          console.log('⚠️ No callback registered for playback completion');
         }
         
         // Clean up the sound object
         this.cleanupSound();
+      } else if (status.isPlaying) {
+        // Update playing state
+        this.isPlaying = true;
       }
     } else if (status.error) {
       console.error('❌ Audio playback error:', status.error);
       this.isPlaying = false;
+      
+      // Call error callback if available
+      if (this.onPlaybackFinished) {
+        console.log('📞 Triggering error callback');
+        const callback = this.onPlaybackFinished;
+        this.onPlaybackFinished = undefined;
+        callback();
+      }
+      
       this.cleanupSound();
     }
   }
@@ -97,6 +122,8 @@ class AudioPlaybackService {
         await this.cleanupSound();
       }
       this.isPlaying = false;
+      // Clear callback when manually stopped
+      this.onPlaybackFinished = undefined;
     } catch (error) {
       console.error('❌ Error stopping playback:', error);
       this.isPlaying = false;
@@ -130,6 +157,7 @@ class AudioPlaybackService {
   private async cleanupSound(): Promise<void> {
     try {
       if (this.sound) {
+        console.log('🧹 Cleaning up sound object...');
         await this.sound.unloadAsync();
         this.sound = null;
       }
@@ -180,17 +208,22 @@ class AudioPlaybackService {
   }
 
   // Play audio from the WebSocket response
-  async playBotResponse(audioUrl: string): Promise<boolean> {
+  async playBotResponse(audioUrl: string, onComplete?: () => void): Promise<boolean> {
     const fullUrl = `https://h3vwf0fhff24pc-9090.proxy.runpod.net${audioUrl}`;
     console.log('🤖 Playing bot response audio:', fullUrl);
+    console.log('📞 Registering completion callback:', !!onComplete);
     
     return this.playAudioFromUrl(fullUrl, () => {
-      console.log('🤖 Bot response playback completed');
+      console.log('🤖 Bot response playback completed - executing callback');
+      if (onComplete) {
+        onComplete();
+      }
     });
   }
 
   // Cleanup when component unmounts
   async cleanup(): Promise<void> {
+    console.log('🧹 Cleaning up audio service...');
     await this.stopPlayback();
     this.onPlaybackFinished = undefined;
   }
